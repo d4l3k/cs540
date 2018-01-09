@@ -8,10 +8,15 @@ data = load("nonLinear.jld")
 
 display(size(X))
 
-Xtrain = X[1:n/2]
-ytrain = y[1:n/2]
-Xvalidate = X[n/2:n]
-yvalidate = y[n/2:n]
+ntrain = Int(floor(n/2))
+
+Xtrain = X[1:ntrain, :]
+ytrain = y[1:ntrain, :]
+Xvalidate = X[ntrain+1:n, :]
+yvalidate = y[ntrain+1:n, :]
+
+display(size(Xtrain))
+display(size(Xvalidate))
 
 # Fit least squares model
 #include("leastSquares.jl")
@@ -25,9 +30,9 @@ bestsigma = 0
 include("leastSquaresRBFL2.jl")
 
 # Find best l, sigma values
-for l = 0.2:0.4:2
-  for sigma = 0.2:0.4:2
-		model = leastSquaresRBFL2(Xtrain,ytrain,1,1)
+for l = 0:0.1:3
+  for sigma = 0.1:0.1:3
+		model = leastSquaresRBFL2(Xtrain,ytrain,l, sigma)
 
 		# Report the error on the validation set
 		t = size(Xvalidate,1)
@@ -50,7 +55,7 @@ model = leastSquaresRBFL2(X,y,bestl,bestsigma)
 t = size(Xtest,1)
 yhat = model.predict(Xtest)
 testError = sum((yhat - ytest).^2)/t
-@printf("l = %f, sigma = %f, TestError = %.2f\n", l, sigma, testError)
+@printf("l = %f, sigma = %f, TestError = %.2f\n", bestl, bestsigma, testError)
 
 
 # Plot model

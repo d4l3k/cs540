@@ -5,9 +5,9 @@ function rbfBasis(X1, X2, sigma)
 end
 
 function leastSquaresRBFL2(X, y, l, sigma)
-	# Add bias column and rbf
+	# Make RBF basis
 	n = size(X,1)
-	Z = [ones(n,1) X rbfBasis(X, X, sigma)]
+	Z = rbfBasis(X, X, sigma)
 
 	# Find regression weights minimizing squared error with L2 regularization
 	w = (Z'*Z + eye(size(Z,2))*l)\(Z'*y)
@@ -15,7 +15,7 @@ function leastSquaresRBFL2(X, y, l, sigma)
 	display(size(w))
 
 	# Make linear prediction function
-	predict(Xtilde) = [ones(size(Xtilde,1),1) Xtilde rbfBasis(Xtilde, X, sigma)]*w
+	predict(Xtilde) = rbfBasis(Xtilde, X, sigma)*w
 
 	# Return model
 	return LinearModel(predict,w)
