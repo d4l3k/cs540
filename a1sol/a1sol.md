@@ -296,17 +296,39 @@ $$\nabla^2 f(w) = I + A + A^T$$
 
 #### 2.4.2
 
-TODO
+
+$$f(w) = \frac12 (w^Tx -y)^TV(w^T x-y) + \frac12 w^T \Lambda w$$
+
+$$\nabla f(w) = V(w^T x-y)x + \frac12 (\Lambda^T + \Lambda)w$$
+$$\nabla^2 f(w) = Vxx + \frac12 (\Lambda^T + \Lambda)$$
 
 #### 2.4.3
 
-TODO
+
+$$c_i = \Phi(y^iw^Tx^i)$$
+
+$U$ is a $d \times d$ matrix with $u$ on it's diagonal.
+
+$$f(w) = -\sum_{i=1}^n \log c_i + \frac12 w^T U w$$
+
+The derivative of the CDF is the PDF.
+
+$$p_i = \phi(y^iw^Tx^i)$$
+
+$p_i$ is a vector of the partial derivatives of $w$.
+
+$$\nabla f(w) = -(\frac{1}{c})^T p + U w$$
+
+$$\nabla^2 f(w) = -(\frac{1}{c})^T \nabla p + U$$
+
+$$p = \frac{1}{\sqrt{2\pi}}\exp(-\frac{(yw^Tx)^2}{2})$$
+$$\nabla p = \frac{1}{\sqrt{2\pi}}\exp(-\frac{(yw^Tx)^2}{2})(-yw^Tx)(yx)$$
+
+$$\nabla^2 f(w) = -(\frac{1}{c})^T \frac{1}{\sqrt{2\pi}}\exp(-\frac{(yw^Tx)^2}{2})(-yw^Tx)(yx) + U$$
 
 ## Question 3 - Coding Questions
 
 ### 3.1
-
-TODO code
 
 #### 3.1.1
 
@@ -314,13 +336,127 @@ TODO code
 
 
 
+leastSquaresRBFL2.jl
+```julia
+include("misc.jl")
+
+function rbfBasis(X1, X2, sigma)
+  return exp.(-distancesSquared(X1,X2)/(2*sigma^2))
+end
+
+function leastSquaresRBFL2(X, y, l, sigma)
+	# Make RBF basis
+	n = size(X,1)
+	Z = rbfBasis(X, X, sigma)
+
+	# Find regression weights minimizing squared error with L2 regularization
+	w = (Z'*Z + eye(size(Z,2))*l)\(Z'*y)
+
+	display(size(w))
+
+	# Make linear prediction function
+	predict(Xtilde) = rbfBasis(Xtilde, X, sigma)*w
+
+	# Return model
+	return LinearModel(predict,w)
+end
+```
+
 #### 3.1.2
+
+Training:
+
+Linear basis: The dominating computations are computing `X' * X` which takes
+$O(nd^2)$ and inverting a matrix which takes roughly $O(d^3)$. Thus, for
+training the runtime is roughly $O(d^2(n+d))$. Classifying t examples is just
+$O(td)$.
+
+RBF basis: Computing the basis takes $O(n^2 d)$ time and produces a matrix of
+size $n \times n$. Thus, squaring it takes $O(n^3)$ and solving the system takes
+$O(n^3)$. Overall training is $O(n^3)$. Prediction takes $O(ntd)$ to compute the basis and $O(tn)$ to apply
+the model, thus $O(ntd)$.
+
 
 #### 3.1.3
 
 ![](./3.1.3.png)\
 
 
+
+example_nonLinear.jl
+```julia
+# Load X and y variable
+using JLD
+data = load("nonLinear.jld")
+(X,y,Xtest,ytest) = (data["X"],data["y"],data["Xtest"],data["ytest"])
+
+# Compute number of training examples and number of features
+(n,d) = size(X)
+
+display(size(X))
+
+ntrain = Int(floor(n/2))
+
+Xtrain = X[1:ntrain, :]
+ytrain = y[1:ntrain, :]
+Xvalidate = X[ntrain+1:n, :]
+yvalidate = y[ntrain+1:n, :]
+
+display(size(Xtrain))
+display(size(Xvalidate))
+
+# Fit least squares model
+#include("leastSquares.jl")
+#model = leastSquares(X,y)
+
+
+bestError = 10000000000000000
+bestl = 0
+bestsigma = 0
+
+include("leastSquaresRBFL2.jl")
+
+# Find best l, sigma values
+for l = 0:0.1:3
+  for sigma = 0.1:0.1:3
+		model = leastSquaresRBFL2(Xtrain,ytrain,l, sigma)
+
+		# Report the error on the validation set
+		t = size(Xvalidate,1)
+		yhat = model.predict(Xvalidate)
+		validationError = sum((yhat - yvalidate).^2)/t
+		@printf("l = %f, sigma = %f, ValidationError = %.2f\n", l, sigma, validationError)
+    if validationError < bestError
+      bestError = validationError
+      bestl = l
+      bestsigma = sigma
+    end
+  end
+end
+
+@printf("Best validation l = %f, sigma = %f, error = %f", bestl, bestsigma, bestError)
+
+model = leastSquaresRBFL2(X,y,bestl,bestsigma)
+
+# Report the error on the test set
+t = size(Xtest,1)
+yhat = model.predict(Xtest)
+testError = sum((yhat - ytest).^2)/t
+@printf("l = %f, sigma = %f, TestError = %.2f\n", bestl, bestsigma, testError)
+
+
+# Plot model
+using PyPlot
+figure()
+plot(X,y,"b.")
+plot(Xtest,ytest,"g.")
+Xhat = minimum(X):.1:maximum(X)
+Xhat = reshape(Xhat,length(Xhat),1) # Make into an n by 1 matrix
+yhat = model.predict(Xhat)
+plot(Xhat,yhat,"r")
+ylim((-300,400))
+show()
+```
 
 #### 3.1.4
 
