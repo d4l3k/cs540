@@ -4,8 +4,8 @@ data = load("outliersData.jld")
 (X,y,Xtest,ytest) = (data["X"],data["y"],data["Xtest"],data["ytest"])
 
 # Fit a least squares model
-include("leastAbsolutes.jl")
-model = leastAbsolutes(X,y)
+include("leastMax.jl")
+model = leastMax(X,y)
 
 # Evaluate training error
 yhat = model.predict(X)

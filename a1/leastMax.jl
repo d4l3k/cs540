@@ -2,14 +2,21 @@ using MathProgBase, GLPKMathProgInterface
 
 include("misc.jl")
 
-function leastAbsolutes(X, y)
+function leastMax(X, y)
   (n, d) = size(X)
   X = [ones(n, 1) X]
   d += 1
   y = y[:,1]
   c = [ones(n); zeros(d)]
-  A = [eye(n) -X; eye(n) X]
-  b = [-y; y]
+  A = zeros(0, d + n)
+  b = Float64[]
+
+  for j = 1:d
+    colj = zeros(d, d)
+    colj[j,j] = 1
+    A = [A; eye(n) X*colj; eye(n) -X*colj]
+    b = [b; -y; y]
+  end
 
   display(size(y))
   display(size(c))
